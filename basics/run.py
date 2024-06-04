@@ -1,10 +1,18 @@
+import os
+from dotenv import load_dotenv
 
-# Patterns Example
-from common.Patterns.Factory.AnimalFactory import AnimalFactory
+def main():
+    load_dotenv()
+    secret_key = os.getenv("SECRET_KEY")
+    database_url = os.getenv("DATABASE_URL")
+    debug_mode = os.getenv("DEBUG")
+
+    print(f"Secret Key: {secret_key}")
+    print(f"Database URL: {database_url}")
+    print(f"Debug Mode: {debug_mode}")
 
 if __name__ == "__main__":
-    print(AnimalFactory().create("Cat").speak())
-
+    main()
 
 '''
 #Asyncio Example
@@ -24,3 +32,14 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 '''
+
+'''
+# Patterns Example
+from common.Patterns.Factory.AnimalFactory import AnimalFactory
+
+if __name__ == "__main__":
+    print(AnimalFactory().create("Cat").speak())
+'''
+
+
+
