@@ -1,4 +1,4 @@
-from classes.Patterns.Factory.Animal import Animal
+from common.Patterns.Factory.Animal import Animal
 
 class Cow(Animal):
     def speak(self):

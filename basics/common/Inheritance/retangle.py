@@ -1,4 +1,4 @@
-from classes.Inheritance.shape import Shape
+from common.Inheritance.shape import Shape
 
 class Rectangle(Shape):
     def __init__(self, width, height):

@@ -1,9 +1,9 @@
-from classes.Patterns.Factory.Factory import Factory
-from classes.Patterns.Factory.Cat import Cat
-from classes.Patterns.Factory.Dog import Dog
-from classes.Patterns.Factory.Cow import Cow
-from classes.Patterns.Factory.Bulldog import Bulldog
-from classes.Patterns.Factory.Animal import Animal
+from common.Patterns.Factory.Factory import Factory
+from common.Patterns.Factory.Cat import Cat
+from common.Patterns.Factory.Dog import Dog
+from common.Patterns.Factory.Cow import Cow
+from common.Patterns.Factory.Bulldog import Bulldog
+from common.Patterns.Factory.Animal import Animal
 
 class AnimalFactory(Factory):
     

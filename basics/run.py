@@ -1,11 +1,13 @@
-'''
+
 # Patterns Example
-from classes.Patterns.Factory.AnimalFactory import AnimalFactory
+from common.Patterns.Factory.AnimalFactory import AnimalFactory
 
 if __name__ == "__main__":
     print(AnimalFactory().create("Cat").speak())
-'''
 
+
+'''
+#Asyncio Example
 import asyncio
 
 async def await_for(time: int) -> str:
@@ -21,3 +23,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+'''

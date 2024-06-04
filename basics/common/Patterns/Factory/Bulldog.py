@@ -1,4 +1,4 @@
-from classes.Patterns.Factory.Dog import Dog
+from common.Patterns.Factory.Dog import Dog
 
 class Bulldog(Dog):
     def speak(self):
