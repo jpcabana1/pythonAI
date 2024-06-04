@@ -9,11 +9,11 @@ class AnimalFactory(Factory):
     
     def __init__(self) -> None:
         self.__animals = {
-            "Bulldog": Bulldog(),
-            "Cat": Cat(),
-            "Cow": Cow(),
-            "Dog": Dog()
+            "Bulldog": Bulldog,
+            "Cat": Cat,
+            "Cow": Cow,
+            "Dog": Dog
         }    
                
     def create(self, name) -> Animal:
-        return self.__animals.get("Bulldog") if self.__animals.get(name) == None else self.__animals.get(name)
+        return self.__animals.get("Bulldog")() if self.__animals.get(name)() == None else self.__animals.get(name)()
