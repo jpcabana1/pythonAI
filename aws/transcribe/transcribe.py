@@ -1,7 +1,6 @@
 import os
 import requests
 import boto3
-from botocore.exceptions import NoCredentialsError
 from dotenv import load_dotenv
 from asyncio import sleep
 import asyncio
@@ -58,18 +57,25 @@ def get_transcription_job(job_name, client):
 async def main():
     client = create_boto3_client()
     job_name='test-job-transcription'
-    response = create_transcription_job(job_name=job_name, client=client)
-    await sleep(10)
+    try:
+        create_transcription_job(job_name=job_name, client=client)
+    except Exception as e:
+        print(f"Error when creating transcription Job")
+        print(e)
+    
+    response = get_transcription_job(job_name=job_name, client=client)
+    
+    while response["TranscriptionJob"]["TranscriptionJobStatus"] != "COMPLETED":
+        response = get_transcription_job(job_name=job_name, client=client)
+        status = str(response["TranscriptionJob"]["TranscriptionJobStatus"])
+        print(f"Current TranscriptionJobStatus: {status}")
+        await sleep(2)
+    
     url = response["TranscriptionJob"]["Transcript"]["TranscriptFileUri"]
     transcription_job_response = requests.request("GET", url, headers={}, data={})
-    
-    while transcription_job_response.json()["status"] != "COMPLETED":
-        await sleep(5)
-        transcription_job_response = requests.request("GET", url, headers={}, data={})
 
     print(transcription_job_response.json()["results"]["transcripts"][0]["transcript"])
     response = client.delete_transcription_job(TranscriptionJobName=job_name)
-
 
 if __name__ == "__main__":
     asyncio.run(main())
