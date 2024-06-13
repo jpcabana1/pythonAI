@@ -38,7 +38,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="C:\DEV\pythonAI\preload-documents"
+VIRTUAL_ENV="C:\Users\joao.de.melo.cabana\OneDrive - Avanade\Documents\DEV\pythonAI\preload-documents"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

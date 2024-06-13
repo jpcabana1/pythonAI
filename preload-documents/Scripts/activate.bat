@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set VIRTUAL_ENV=C:\DEV\pythonAI\preload-documents
+set VIRTUAL_ENV=C:\Users\joao.de.melo.cabana\OneDrive - Avanade\Documents\DEV\pythonAI\preload-documents
 
 if not defined PROMPT set PROMPT=$P$G
 
