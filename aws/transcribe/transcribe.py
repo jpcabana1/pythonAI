@@ -3,9 +3,12 @@ import requests
 import boto3
 from botocore.exceptions import NoCredentialsError
 from dotenv import load_dotenv
+from asyncio import sleep
+import asyncio
 
 load_dotenv()
 
+'''
 s3 = boto3.client(
     's3',
     aws_access_key_id=os.getenv("aws_access_key_id"),
@@ -28,20 +31,20 @@ try:
         
 except Exception as ex:
     print(ex)
-
-
-
 '''
-s3 = boto3.client(
+
+
+def create_boto3_client():
+    return boto3.client(
     'transcribe',
     aws_access_key_id=os.getenv("aws_access_key_id"),
     aws_secret_access_key=os.getenv("aws_secret_access_key"),
     region_name=os.getenv("region_name")
-)
-
-# Start the transcription job
-response = client.start_transcription_job(
-    TranscriptionJobName='test-job-transcription',
+    )
+    
+def create_transcription_job(job_name, client):
+    return client.start_transcription_job(
+    TranscriptionJobName=job_name,
     LanguageCode='en-US',
     MediaFormat='mp4',  # Adjust based on your audio file format
     Media={
@@ -49,15 +52,24 @@ response = client.start_transcription_job(
     }
 ) 
 
-response = client.get_transcription_job(TranscriptionJobName='test_job-transcription')
+def get_transcription_job(job_name, client):
+    return client.get_transcription_job(TranscriptionJobName=job_name)
+   
+async def main():
+    client = create_boto3_client()
+    job_name='test-job-transcription'
+    response = create_transcription_job(job_name=job_name, client=client)
+    await sleep(10)
+    url = response["TranscriptionJob"]["Transcript"]["TranscriptFileUri"]
+    transcription_job_response = requests.request("GET", url, headers={}, data={})
+    
+    while transcription_job_response.json()["status"] != "COMPLETED":
+        await sleep(5)
+        transcription_job_response = requests.request("GET", url, headers={}, data={})
 
-url = response["TranscriptionJob"]["Transcript"]["TranscriptFileUri"]
+    print(transcription_job_response.json()["results"]["transcripts"][0]["transcript"])
+    response = client.delete_transcription_job(TranscriptionJobName=job_name)
 
-transcription_job_response = requests.request("GET", url, headers={}, data={})
 
-print(transcription_job_response.json()["status"])
-print(transcription_job_response.json()["results"]["transcripts"][0]["transcript"])
-
-response = client.delete_transcription_job(TranscriptionJobName='test_job-transcription')
-
-'''
+if __name__ == "__main__":
+    asyncio.run(main())
