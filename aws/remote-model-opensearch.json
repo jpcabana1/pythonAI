@@ -100,7 +100,7 @@ POST /_plugins/_ml/connectors/_create
     "model": "text-embedding-ada-002"
   },
   "credential": {
-    "openAI_key": "sk-proj-wslkUiYJbJrJlGaJgTwQT3BlbkFJcYfSPRnuEyPCXYGCAqzy"
+    "openAI_key": "${openAI_key}"
   },
   "actions": [
     {
