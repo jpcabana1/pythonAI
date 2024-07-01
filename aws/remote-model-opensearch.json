@@ -1,0 +1,123 @@
+PUT /_cluster/settings
+{
+  "persistent": {
+    "plugins.ml_commons.only_run_on_ml_node" : false ,
+    "plugins.ml_commons.connector_access_control_enabled": true,
+    "plugins.ml_commons.model_access_control_enabled" : true,
+    "plugins.ml_commons.memory_feature_enabled": true,
+    "plugins.ml_commons.rag_pipeline_feature_enabled": true,
+    "plugins.ml_commons.trusted_connector_endpoints_regex": [
+      "^https://.*\\.openai\\.azure\\.com/.*$",
+      "^https://runtime\\.sagemaker\\..*[a-z0-9-]\\.amazonaws\\.com/.*$",
+      "^https://api\\.openai\\.com/.*$",
+      "^https://api\\.cohere\\.ai/.*$",
+      "^https://bedrock-runtime\\..*[a-z0-9-]\\.amazonaws\\.com/.*$"
+    ]
+  }
+}
+
+POST /_plugins/_ml/connectors/_create
+{
+  "name": "Azure OpenAI POC",
+  "description": "Testing Azure OpenAI Connection",
+  "version": "1",
+  "protocol": "https",
+  "parameters": {
+    "endpoint": "jp-ftd-openai.openai.azure.com/",
+    "deploy-name": "ftd-embedding-ada",
+    "model": "text-embedding-ada-002",
+    "api-version": "2023-05-15"
+  },
+  "credential": {
+    "openAI_key": "29392cd0e4a54a919f390cc3b1baed26"
+  },
+  "actions": [
+    {
+      "action_type": "predict",
+      "method": "POST",
+      "url": "https://${parameters.endpoint}/openai/deployments/${parameters.deploy-name}/embeddings?api-version=${parameters.api-version}",
+      "headers": {
+        "api-key": "${credential.openAI_key}"
+      },
+      "request_body": "{ \"input\": ${parameters.input}}",
+      "pre_process_function": "connector.pre_process.openai.embedding",
+      "post_process_function": "connector.post_process.openai.embedding"
+    }
+  ]
+}
+
+
+{
+  "connector_id": "C9CZT5ABMeXpQwrSc9r3"
+}
+
+POST /_plugins/_ml/models/_register
+{
+    "name": "openAI-gpt-3.5-turbo",
+    "function_name": "remote",
+    "model_group_id": "1jriBYsBq7EKuKzZX131",
+    "description": "test model",
+    "connector_id": "a1eMb4kBJ1eYAeTMAljY"
+}
+
+POST /_plugins/_ml/connectors/_create
+{
+  "name": "Azure OpenAI Connector",
+  "description": "Testing Azure OpenAI Connector",
+  "version": "1",
+  "protocol": "http",
+  "parameters": {
+    "endpoint": "jp-ftd-openai.openai.azure.com/",
+    "deploy-name": "ftd-embedding-ada",
+    "model": "text-embedding-ada-002",
+    "api-version": "2023-07-01-preview",
+    "temperature": 0.0
+  },
+  "credential": {
+    "secretArn": "arn:aws:secretsmanager:us-east-2:654654631939:secret:azure_openai_secret-zJ5rYR",
+    "roleArn": "arn:aws:iam::654654631939:role/azure_openai_secret_role"
+  },
+  "actions": [
+    {
+      "action_type": "predict",
+      "method": "POST",
+      "url": "https://${parameters.endpoint}/openai/deployments/${parameters.deploy-name}/embeddings?api-version=${parameters.api-version}",
+      "headers": {
+        "api-key": "${credential.secretArn}"
+      },
+      "request_body": "{ \"input\": \"${parameters.input}\" }"
+    }
+  ]
+}
+
+POST /_plugins/_ml/connectors/_create
+{
+  "name": "OpenAI POC",
+  "description": "Testing OpenAI Connection",
+  "version": "1",
+  "protocol": "http",
+  "parameters": {
+    "model": "text-embedding-ada-002"
+  },
+  "credential": {
+    "openAI_key": "sk-proj-wslkUiYJbJrJlGaJgTwQT3BlbkFJcYfSPRnuEyPCXYGCAqzy"
+  },
+  "actions": [
+    {
+      "action_type": "predict",
+      "method": "POST",
+      "url": "https://api.openai.com/v1/embeddings",
+      "headers": {
+        "Authorization": "Bearer ${credential.openAI_key}"
+      },
+      "request_body": "{ \"input\": ${parameters.input}, \"model\": \"${parameters.model}\" }",
+      "pre_process_function": "connector.pre_process.openai.embedding",
+      "post_process_function": "connector.post_process.openai.embedding"
+    }
+  ]
+}
+POST /_plugins/_ml/model_groups/_register
+{
+    "name": "remote_model_group",
+    "description": "This is an example description"
+}
