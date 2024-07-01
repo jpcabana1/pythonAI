@@ -60,35 +60,6 @@ POST /_plugins/_ml/models/_register
     "connector_id": "a1eMb4kBJ1eYAeTMAljY"
 }
 
-POST /_plugins/_ml/connectors/_create
-{
-  "name": "Azure OpenAI Connector",
-  "description": "Testing Azure OpenAI Connector",
-  "version": "1",
-  "protocol": "http",
-  "parameters": {
-    "endpoint": "jp-ftd-openai.openai.azure.com/",
-    "deploy-name": "ftd-embedding-ada",
-    "model": "text-embedding-ada-002",
-    "api-version": "2023-07-01-preview",
-    "temperature": 0.0
-  },
-  "credential": {
-    "secretArn": "arn:aws:secretsmanager:us-east-2:654654631939:secret:azure_openai_secret-zJ5rYR",
-    "roleArn": "arn:aws:iam::654654631939:role/azure_openai_secret_role"
-  },
-  "actions": [
-    {
-      "action_type": "predict",
-      "method": "POST",
-      "url": "https://${parameters.endpoint}/openai/deployments/${parameters.deploy-name}/embeddings?api-version=${parameters.api-version}",
-      "headers": {
-        "api-key": "${credential.secretArn}"
-      },
-      "request_body": "{ \"input\": \"${parameters.input}\" }"
-    }
-  ]
-}
 
 POST /_plugins/_ml/connectors/_create
 {
