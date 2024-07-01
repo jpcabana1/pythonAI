@@ -3,3 +3,4 @@ openai
 langchain
 langchain-community
 unstructured-client
+pypdf2

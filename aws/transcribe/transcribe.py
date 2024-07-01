@@ -3,7 +3,7 @@ import requests
 import boto3
 from dotenv import load_dotenv
 from asyncio import sleep
-import asyncio
+from asyncio import run
 
 load_dotenv()
 
@@ -39,14 +39,14 @@ def create_boto3_client():
     aws_secret_access_key=os.getenv("aws_secret_access_key"),
     region_name=os.getenv("region_name")
     )
-    
-def create_transcription_job(job_name, client):
+
+def create_transcription_job(job_name, client, video_file_name):
     return client.start_transcription_job(
     TranscriptionJobName=job_name,
     LanguageCode='en-US',
     MediaFormat='mp4',  # Adjust based on your audio file format
     Media={
-        'MediaFileUri': "s3://ftd-test-bucket/Generative AI explained in 2 minutes.mp4"
+        'MediaFileUri': f"s3://ftd-test-bucket/{video_file_name}"
     }
 ) 
 
@@ -56,8 +56,11 @@ def get_transcription_job(job_name, client):
 async def main():
     client = create_boto3_client()
     job_name='test-job-transcription'
+    # video_file_name = "Dune The Emperor Has Spoken Warner Bros. Entertainment.mp4"
+    # video_file_name = "Generative AI explained in 2 minutes.mp4"
+    video_file_name = "What is Object-Oriented Programming (OOP).mp4"
     try:
-        create_transcription_job(job_name=job_name, client=client)
+        create_transcription_job(job_name=job_name, client=client, video_file_name=video_file_name)
     except Exception as e:
         print(f"Error when creating transcription Job")
         print(e)
@@ -77,4 +80,4 @@ async def main():
     response = client.delete_transcription_job(TranscriptionJobName=job_name)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    run(main())

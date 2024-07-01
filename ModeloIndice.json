@@ -1,0 +1,24 @@
+[
+    {
+        "id":"1",
+        "parent_id": "kasdflkjasd",
+        "text": "Chunk 1 de conteúdo extraído do arquivo kasdflkjasd",
+        "vector": [0.1, 0.2, ..., 0.512],
+        "metadados":{
+          "A":"ValorA",
+          "B":"ValorB",
+          "C":"ValorC"
+        }
+      },
+      {
+        "id":"2",
+        "parent_id": "kasdflkjasd",
+        "text": "Chunk 2 de conteúdo extraído do arquivo kasdflkjasd",
+        "vector": [0.1, 0.2, ..., 0.512],
+        "metadados":{
+          "A":"ValorA",
+          "B":"ValorB",
+          "C":"ValorC"
+        }
+      }
+]

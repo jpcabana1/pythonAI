@@ -1,0 +1,445 @@
+POST /_plugins/_ml/model_groups/_register
+{
+  "name": "remote_azure_openai_group",
+  "description": "A model group for external models in AzureOpenAI"
+}
+
+{
+    "model_group_id": "OdCmT5ABMeXpQwrSm9q8",
+    "status": "CREATED"
+  }
+
+PUT /_cluster/settings
+{
+  "persistent": {
+    "plugins.ml_commons.only_run_on_ml_node" : false ,
+    "plugins.ml_commons.connector_access_control_enabled": true,
+    "plugins.ml_commons.model_access_control_enabled" : true,
+    "plugins.ml_commons.memory_feature_enabled": true,
+    "plugins.ml_commons.rag_pipeline_feature_enabled": true,
+    "plugins.ml_commons.trusted_connector_endpoints_regex": [
+      "^https://.*\\.openai\\.azure\\.com/.*$",
+      "^https://runtime\\.sagemaker\\..*[a-z0-9-]\\.amazonaws\\.com/.*$",
+      "^https://api\\.openai\\.com/.*$",
+      "^https://api\\.cohere\\.ai/.*$",
+      "^https://bedrock-runtime\\..*[a-z0-9-]\\.amazonaws\\.com/.*$"
+    ]
+  }
+}
+
+POST /_plugins/_ml/connectors/_create
+{
+  "name": "Azure OpenAI POC",
+  "description": "Testing Azure OpenAI Connection",
+  "version": "1",
+  "protocol": "https",
+  "parameters": {
+    "endpoint": "jp-ftd-openai.openai.azure.com/",
+    "deploy-name": "ftd-embedding-ada",
+    "model": "text-embedding-ada-002",
+    "api-version": "2023-05-15"
+  },
+  "credential": {
+    "openAI_key": "29392cd0e4a54a919f390cc3b1baed26"
+  },
+  "actions": [
+    {
+      "action_type": "predict",
+      "method": "POST",
+      "url": "https://${parameters.endpoint}/openai/deployments/${parameters.deploy-name}/embeddings?api-version=${parameters.api-version}",
+      "headers": {
+        "api-key": "${credential.openAI_key}"
+      },
+      "request_body": "{ \"input\": ${parameters.input}}",
+      "pre_process_function": "connector.pre_process.openai.embedding",
+      "post_process_function": "connector.post_process.openai.embedding"
+    }
+  ]
+}
+
+{
+  "connector_id": "C9CZT5ABMeXpQwrSc9r3"
+}
+
+POST /_plugins/_ml/models/_register
+{
+    "name": "text-embedding-ada-002",
+    "function_name": "remote",
+    "model_group_id": "OdCmT5ABMeXpQwrSm9q8",
+    "description": "embedding model",
+    "connector_id": "C9CZT5ABMeXpQwrSc9r3"
+}
+
+{
+    "task_id": "QNCnT5ABMeXpQwrSr9p9",
+    "status": "CREATED",
+    "model_id": "QdCnT5ABMeXpQwrSsdou"
+}
+
+GET /_plugins/_ml/tasks/QNCnT5ABMeXpQwrSr9p9
+
+{
+    "model_id": "QdCnT5ABMeXpQwrSsdou",
+    "task_type": "REGISTER_MODEL",
+    "function_name": "REMOTE",
+    "state": "COMPLETED",
+    "worker_node": [
+      "wrExTGdgTPmGhMyBYHJU7w"
+    ],
+    "create_time": 1719323307668,
+    "last_update_time": 1719323308542,
+    "is_async": false
+}
+
+PUT _cluster/settings
+{
+  "persistent": {
+    "plugins.ml_commons.model_auto_deploy.enable" : "false"
+  }
+}
+
+
+POST /_plugins/_ml/models/QdCnT5ABMeXpQwrSsdou/_deploy
+
+{
+    "task_id": "TtCqT5ABMeXpQwrSENr5",
+    "task_type": "DEPLOY_MODEL",
+    "status": "COMPLETED"
+  }
+
+
+GET /_plugins/_ml/tasks/TtCqT5ABMeXpQwrSENr5
+
+{
+    "model_id": "QdCnT5ABMeXpQwrSsdou",
+    "task_type": "DEPLOY_MODEL",
+    "function_name": "REMOTE",
+    "state": "COMPLETED",
+    "worker_node": [
+      "wrExTGdgTPmGhMyBYHJU7w",
+      "ZEi3oV1OQCiIbdEDsAWrfw"
+    ],
+    "create_time": 1719323463927,
+    "last_update_time": 1719323464589,
+    "is_async": true
+}
+
+
+POST /_plugins/_ml/models/QdCnT5ABMeXpQwrSsdou/_predict
+{
+    "parameters": {
+        "inputText": "hello world"
+    }
+}
+
+
+PUT _ingest/pipeline/text-chunking-embedding-ingest-pipeline
+{
+  "description": "A text chunking and embedding ingest pipeline",
+  "processors": [
+    {
+      "text_chunking": {
+        "algorithm": {
+          "fixed_token_length": {
+            "token_limit": 500,
+            "overlap_rate": 0.2,
+            "tokenizer": "standard"
+          }
+        },
+        "field_map": {
+          "passage_text": "passage_chunk"
+        }
+      }
+    },
+    {
+      "text_embedding": {
+        "model_id": "QdCnT5ABMeXpQwrSsdou",
+        "field_map": {
+          "passage_chunk": "passage_chunk_embedding"
+        }
+      }
+    }
+  ]
+}
+
+PUT testindex
+{
+  "settings": {
+    "index": {
+      "knn": true,
+      "default_pipeline": "text-chunking-embedding-ingest-pipeline"
+    }
+  },
+  "mappings": {
+    "properties": {
+      "text": {
+        "type": "text"
+      },
+      "passage_chunk_embedding": {
+        "type": "nested",
+        "properties": {
+          "knn": {
+            "type": "knn_vector",
+            "dimension": 1536
+          }
+        }
+      }
+    }
+  }
+}
+
+POST testindex/_doc?pipeline=text-chunking-embedding-ingest-pipeline
+{
+  "passage_text": "This is an example document to be chunked. The document contains a single paragraph, two sentences and 24 tokens by standard tokenizer in OpenSearch."
+}
+
+POST /testindex/_doc/?pipeline=text-chunking-embedding-ingest-pipeline
+{
+  "passage_text": "Hello world",
+  "id": "s2"
+}
+
+
+POST /testindex/_doc/?pipeline=text-chunking-embedding-ingest-pipeline
+{
+  "passage_text": "Hi planet",
+  "id": "s3"
+}
+
+
+POST /testindex/_doc/?pipeline=text-chunking-embedding-ingest-pipeline
+{
+  "passage_text": "fala minhas amigas e meus amigos. Tudo bem com vocês professor Nati Silva e estamos aqui pra falar de citoplasma. Estamos aqui pra falar de processos energéticos. Estamos aqui pra falar de células. Estamos aqui pra falar de vida. Estamos aqui pra falar de biologia acima de tudo, tudo bem, então eu te convido pra entrar nessa jornada comigo. A priori eu queria te falar que as células em geral possuem membrana plasmática. Membrana é uma estrutura o fundamental para as células e após ultrapassar a membrana, as células vão ter a região do citoplasma e lá no citoplasma das células uma série de funções acontecem uma série de reações. Uma série de atividades acontecem na região citoplasma citoplasma é esse que pode variar em composição de uma célula pra outro, de um ser vivo pra outro que pode apresentar estruturas diferentes nos diferentes seres vivos. Uma riqueza compõe o citoplasma em termos de diversidade. Porém, quando nós falamos de citoplasma nós temos que lembrar que no citoplasma em algumas células estará presente o núcleo. Já em outras células não estará presente o núcleo A T nem toda célula tem núcleo, nem todo ser vivo tem núcleo perfeito aí nós nos lembramos da ideia de eucariontes e procariontes. Eucariontes são indivíduos que tem um núcleo organizado que possuem uma membrana que envolve o núcleo delimitando o núcleo diferentemente do restante do citoplasma. Já os organismos prório são aqueles sem núcleo, sem o núcleo organizado com o seu material genético disperso, citoplasma, beleza procariontes, por exemplo, as bactérias, eucariontes, animais, vegetais, fungos, protozoários, algas, a maioria beleza. Porém, como estamos falando de citoplasma, nós temos que lembrar que o citoplasma das células possui tipo entre aspas, uns órgãos que são encarregados de funções específicas das células. Esses órgãos presentes no citoplasma são as organelas citoplasma e são várias. Você já deve ter ouvido falar em todas elas, mas vamos lembrar uma por uma e a sua. Por exemplo, o retículo endoplasmático, que tem a função de transporte de substâncias, armazena substâncias e que pode ser subdividida em lisa e rugoso. O rugoso, como tem os ribossomos, participa da síntese de proteínas. O liso, como não tem ribossomos, pode participar, por exemplo, na produção de alguns lipídeos ou mesmo da desintoxicação celular. Outra organela muito importante é o complexo de Golgi ou Somo complexo Golgi. Existem muitas terminologias para essa organela que geralmente tá ligada a secreção celular, lembre secreção celular significa você enviar moléculas para o local onde ela vai agir. Secreção não é eliminar secreção é enviar uma molécula para onde ela deve agir. É como se fosse um correio. É como se tivesse dando endereço para as moléculas sobre o complexo de. Participa também de uma série de outras coisas importantes, como a formação do Acro, soma dos espermatozóides, então vale a pena lembrar do complexo de Temos também os lisossomos, repleto de enzimas que vão degradar estruturas que nós chamamos de digestão intracelular, lisossomos esses que com suas enzimas podem até destruir microorganismos ou muitas vezes causar no fenômeno da au tolice a regressão da cauda do girino girino, que é a fase larval do sapo. Temos também os perro. Somos que com as suas enzimas, suas enzimas já oxidativas vão participar de processos importantíssimos no nosso organismo, como a quebra da água oxigenada, que é tóxica e nosso corpo produz água oxigenada, Então vai quebrar a água oxigenada ou mesmo da de um processo que auxilia a respiração, que é a beta oxidação. Então pe oxi somos são muito importantes. Temos também os ribossomos, que participam, que são fundamentais pra síntese protéica. Temos as mitocôndrias encarregadas da respiração celular ou os cloroplastos encarregados da fotossíntese e vamos daqui a pouco falar desses processos. Beleza então são várias alas, um mundo de funções, um universo de funções, tudo bem, mas dando continuidade à nossa conversa sobre esses processos energéticos, nós temos que lembrar que os processos energéticos, os processos metabólicos, eles tem uma divisão básica. Tem aqueles do anabolizado, onde nós iremos construir moléculas e nós temos o catabolismo onde há quebra de moléculas que eu quebro moléculas pra pegar suas partes e produzir outras por exemplo. Ou seja, anabolizar e catabolismo compõem o nosso metabolismo, Então vamos falar agora de metabolismo energético, mas para eu te falar de metabolismo energético, de respiração, por exemplo, eu tenho que te lembrar de uma galera muito importante, chamada Acep de hidrogênio. Você, você vai ver como eles serão importantes os acep de hidrogênio, eles são moléculas que capturam, hidrogênios, eles não deixam hidrogênio serem perdidos na shell e hidrogênios são tão importantes assim você vai ver que é tudo bem. Vamos adiante, então os receptores de hidrogênio mais famosinhos são o nad, o FAD, O NAD P mas nós vamos ver um por um em seu momento específico. Okay iniciando então com a respiração aeróbica pessoal, a respiração significa produzir energia não a respiração só é troca de gases, inspirar oxigênio e espirar o gás carbonico. Essa é uma fase mecânica da respiração, porém temos também uma fase celular que acontece parte no citoplasma e parte nas mitocôndrias, como acabamos de falar e esse processo de respiração que utiliza o oxigênio, como a septo final de elétrons que utiliza o oxigênio como acep final de hidrogênios, nós podemos considerar os elétrons e os h mais os hidrogênios como sinônimos. Nessa situação os o, o oxigênio, ele é crucial, o processo você vai ver isso Daqui a pouco. Esse processo usa a glicose como substrato. É da quebra da glicose que nós vamos produzir energia o a t P. Por isso que é tão importante, nós temos um consumo adequado de glicose okay, mas afinal, quais são as etapas desse processo de respiração? Nós podemos dividir basicamente em quatro a glicose a oxidação do ácido perco o ciclo do ácido cítrico e a cadeia respiratória ou cadeia transportadora de elétrons. Vamos falar rapidamente sobre o cada um deles a glicose como o nome já fala é a quebra da glicose. É onde inicia a quebra da glicose Para a ocorrência do processo. A glicose é o substrato básico para tudo isso. Quando a gente quebra a glicose nós origina o ácido piú. Bico ou piva Durante a quebra da glicose da glicose, eu invisto dois a t PS, mas produzo quatro. Então tem um saldo positivo de dois. Tudo bem e os hidrogênios liberados são capturados. São captados pelos receptores como o nade. Tudo bem. Após isso na oxidação do ácido perco que já agora vai acontecer. Na mitocôndria, a glicólise acontece no citoplasma, a oxidação do ácido perú e as demais etapas já vão acontecer na mito cólera Nesse momento, o ácido púbico ou o piru ato vai participar de reações e vai originar uma molécula chamada acetil a ceti, que vai precisar do auxílio de uma outra molécula chamado coenzima A, o que forma então o complexo a Ceti co a a ceitil coenzima A, que vão ser importantíssimos para a etapa seguinte, que é o ciclo do ácido cítrico e no ciclo do ácido cítrico. Esse complexo acetil coenzima A vai interagir com o ácido o acético para originar ácido cítrico e uma série de reações irão acontecer nesse ciclo. E no final desse processo todo nós teremos a liberação de gás carbônico, que é justamente o gás carbônico que a gente usa pra inspirar, né? Na nossa respiração e também vai produzir dois a t PS Percebam dois a t p sobraram na glicólise. Dois a t PS sobraram da oxidação do ácido pir e do ciclo do ácido cítrico. Só que a maior parte do A t P tá na próxima etapa que é a cadeia transportadora de elétrons ou cadeia respiratória que vai usar os hidrogênios que foram captados pelo NAD e pelo FAD nas etapas anteriores para produzir energia e nessa etapa final nós produzimos trinta e quatro, trinta e cinco seis. A t PS é a fase mais energética e é nessa etapa que o oxigênio vai participar. Como acep final de elétrons. Perceba que o oxigênio interage no final da última etapa e quando o oxigênio interage com esses elétrons com esses hidrogênios que nós usamos como sinônimo oxigênio com hidrogênios formando moléculas de água, Beleza Então a etapa mais energética é a última etapa do processo de respiração aeróbica. Tudo bem Anatel, mas tem um processo também energético, chamado fermentação exato e na fermentação. Não existe a atuação do oxigênio perfeitamente, mas tem glicose A fermentação também usa a glicose como substrato. Só que, ao contrário da respiração na fermentação, a quebra da glicose é incompleta. A fermentação gera menos a T P. A fermentação gera menos energia do que a respiração devido a sua quebra incompleta da glicose, pois não tem também a participação da mitocôndria, que é uma organela especializada para esse processo. Mas mesmo assim, muitos organismos podem praticar a fermentação. Nós mesmos seres humanos, temos um tipo de célula que pratica a fermentação que gera dois A t PS por glicose lá na respiração poderia gerar trinta e quatro quarenta a t PS por glicose. Veja só a diferença t e quais são as etapas da fermentação É basicamente uma a glicólise parecida com a da respiração. Onde eu inicio a quebra da glicose eu só inicio. Eu não termino. Eu não quebro totalmente essa glicose e o processo de fermentação. Ele pode ou não liberar gás carbônico. Depende do tipo de fermentação. Tem vários tipos de fermentação. Eu vou te citar agora dois tipos básicos a fermentação alcoólica e a fermentação láctica. A fermentação alcoólica tem como produto final o álcool. Etílico, né? Produz a t P Energia, mas também produz álcool etílico. Na fermentação láctica, produz a t P, mas produz o ácido láctico, a fermentação alcoólica. Ela é muito utilizada para produzir pães massas para produzir bebidas da T. Por quê? Primeiro, porque tem a formação do álcool? Etílico né? Que é comum nas bebidas alcoólicas, por exemplo, e além disso, o processo de fermentação alcoólica ou etílica, devido a sua liberação de gás carbônico, é esse gás carbônico que vai inchar as massas de pães, as massas de bolos. Você percebe que você bota um bolo, um pão no forno, bem baixinho, e depois ele sai inchado. Ele sai mais gordinho. Porque porque o gás carbônico in f, essa massa. E é? E esse gás carbônico vem do processo, fermenta de organismos que estão presentes na massa. No fermento, tudo bem anati. Se produz c o dois pra inflar a massa produz álcool, também é só que o álcool ele evapora. Não fica álcool no teu pão, no teu bolo Tá? Tá bom, tá bom? Fique tranquilo E a fermentação láctica Ela é usada no processo de laticínios. Só que o nosso corpo, a nossa musculatura estriado esquelética, os nossos músculos voluntários, podem realizar o processo de fermentação láctica em casos de esforço extremo e já com pouca de, com pouca eh disponibilidade de oxigênio. Por isso que você às vezes tem dores pós exercícios, porque o ácido láctico ele inflama a tua musculatura. Mas logo em seguida a dor passa. Beleza na Che tem outros processos energéticos pra gente conversar. Tem como, por exemplo, a fotossíntese, que é tão importante A presença dos cloroplastos, como nós falamos anteriormente e fotossíntese é um processo auto trópico onde será produzido matéria orgânica a partir de compostos inorgânicos. Gás carbônico e água inorgânicos vão originar açúcar orgânico açúcar. Esse é tão importante para o vegetal e durante esse processo é importantíssima a presença da luz. A energia luminosa será convertida em energia química ao longo do processo na T. E quem é essa antena? Quem é essa placa fotovoltaica que vai captar a energia luminosa, a clorofila presente nos tics dos cloroplastos? Meus amigos? Perceba, então, que a clorofila é fundamental pra captação da energia luminosa e o processo de fotossíntese é dividido em duas partes A fase clara ou fase, foto, química e a fase escura ou fase puramente química. Vou te resumir de uma maneira muito tranquila na fase foto, química ou fase clara. Como muitos chamam, a molécula de água vai ser quebrada. Se eu quebro a molécula de água h e o hidrogênio e oxigênio o hidrogênio, eles são captados pelos receptores de hidrogênio. Já falamos disso antes o oxigênio é liberado. É esse oxigênio que nós inspiramos? Tudo aquilo que é produzido na fase clara, tirando o oxigênio que é liberado, vai funcionar, vai agir na fase escura. Então, o que é que sobra da fase? Clara os hidrogênios, né? Com o na d p, que é o acep de hidrogênios na fotossíntese, Na fase clara produz também a t p. Esse a t p com esses hidrogênios captados pelo na d p, vão lá pra fase escura interagir com o c o dois E essa interação é a que vai gerar o açúcar, que é o produto final da fotossíntese. É só isso É é bem simples, a fotossíntese é bem simples E pra finalizar eu tenho que te lembrar da quimio síntese que também é um processo auto tráfico. Só que os organismos não vão tirar a energia da luz solar. Eles vão tirar a sua energia a partir de reações que acontecem naturalmente de reações de compostos inorgânicos. É um processo bem diferente da fotossíntese, feito, por exemplo, por algumas bactérias como bactérias do ciclo do nitrogênio. Então, nem sempre um processo auto tráfico é a fotossíntese. Tudo bem. Ah, eu posso te fazer uma pergunta que uma vez caiu em um vestibular ainda sobre fotossíntese, se a fotossíntese produz a t p pra que que a planta tem que respirar também pra produzir a T P, a resposta é muito simples o a t p produzido na fotossíntese ele é gasto na própria fotossíntese, então não sobra nada. Por isso que a planta tem que respirar pra manter o restante do seu corpo, beleza. Então, meus amigos, eu acho que hoje eu fico por aqui. Eu espero que você tenha gostado e aprendido bastante. Tchau."
+}
+
+POST /testindex/_doc/?pipeline=text-chunking-embedding-ingest-pipeline
+{
+  "passage_text": "você já deve ter percebido a enorme diversidade de seres vivos, né? Mas você sabe como surgiu tanta diferença assim, vamos lá falar sobre evolução. A evolução dos seres vivos foi explicada de formas diferentes ao longo da história, Porém, duas teorias se destacaram uma desenvolvida por Lamark e outra por Darwin. Ambos consideravam que as espécies não eram fixas, ou seja, que elas poderiam sofrer mudanças ao longo do tempo. Além disso, eles também consideravam que o ambiente tem um papel importantíssimo no processo de evolução. Tá, Eles pareciam concordar em algumas coisas sobre evolução, mas no que será que eles discordavam? Então, lamark defendia a lei do uso e desuso, e acreditava que o ambiente era quem provocava as alterações nos organismos. Um exemplo simples é pensar no pescoço das girafas. Imagine que, nos ancestrais, eles eram curtos. Como eles ficaram tão longos para lamark, O alongamento dos pescoços ocorreu porque o ambiente no qual viviam sofreu uma modificação que fez com que elas precisassem esticar o pescoço constantemente. Para conseguir a, por exemplo, essa necessidade de esticar o pescoço fez ao longo de gerações que o pescoço delas ficasse cada vez mais comprido, característica que acabou sendo passada de pais para filhos. Para Darwin, a evolução acontecia de outra forma. Ele defendia a seleção natural, processo pelo qual o ambiente seleciona os indivíduos mais adaptados. Aqueles que tem mais chances de sobreviver, reproduzir e deixar descendentes tá e a evolução das girafas nesse caso. Para Darwin, entre os ancestrais das girafas existiam indivíduos com pescoços um pouco mais longos e outros com pescoços mais curtos. Alguma alteração no ambiente fez com que ficasse mais fácil para a girafa de pescoço mais longo, sobreviver e deixar descendentes. Essa alteração criou uma situação na qual praticamente nenhum indivíduo de pescoço curto conseguiu sobreviver e todos acabaram desaparecendo. Então, como essas características surgem e são passadas adiante na época, Darwin não soube responder essa pergunta. Hoje nós sabemos a resposta, pois os estudos de Gregor Mendel, pai da genética, foram divulgados. Atualmente temos a teoria sintética da evolução, que une os conceitos descritos por Darwin aos conhecimentos desenvolvidos através do estudo do DNA. Foi assim que a gente descobriu que as mudanças entre as espécies surgem de mutações no DNA. Hoje dizemos que novas espécies surgem por meio de mutações e de processos de isolamento. As mutações precisam ser hereditárias e precisam passar pelo difícil processo da seleção natural se as mutações resultam em adaptações vantajosas que elas aumentem cada vez mais na população, fazendo a espécie evoluir, porém pode acontecer da população de uma determinada espécie ser separada em outras duas. Nesse caso, podemos ter o isolamento geográfico e o isolamento reprodutivo. No isolamento geográfico, as populações são separadas por uma barreira geográfica tipo o surgimento de um rio ou de uma montanha. Ao longo das gerações. Cada população vai sofrendo mutações diferentes e seletivas diferentes até que em certo momento as populações já acumulam tantas mudanças que não conseguem mais reproduzir, ou seja, estão em isolamento reprodutivo também. Nesse ponto não há mais dúvidas. Eles agora são espécies diferentes. Bom, Esse foi só um pequeno passeio por todo o processo de evolução. Continue aprofundando seus estudos, tá até a próxima"
+}
+
+
+
+GET testindex/_search
+{
+  "query": {
+    "nested": {
+      "score_mode": "max",
+      "path": "passage_chunk_embedding",
+      "query": {
+        "neural": {
+          "passage_chunk_embedding.knn": {
+            "query_text": "document",
+            "model_id": "QdCnT5ABMeXpQwrSsdou"
+          }
+        }
+      }
+    }
+  }
+}
+
+POST _plugins/_sql
+{
+  "query": "SELECT * FROM testindex LIMIT 50"
+}
+
+
+POST _ingest/pipeline/text-chunking-embedding-ingest-pipeline/_simulate
+{
+  "docs": [
+    {
+      "_index": "testindex",
+      "_source":{
+         "passage_text": "This is an example document to be chunked. The document contains a single paragraph, two sentences and 24 tokens by standard tokenizer in OpenSearch."
+      }
+    }
+  ]
+}
+
+
+
+
+PUT /_search/pipeline/nlp-search-pipeline
+{
+  "description": "Post processor for hybrid search",
+  "phase_results_processors": [
+    {
+      "normalization-processor": {
+        "normalization": {
+          "technique": "min_max"
+        },
+        "combination": {
+          "technique": "arithmetic_mean",
+          "parameters": {
+            "weights": [
+              0.3,
+              0.7
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
+
+
+PUT /_search/pipeline/default_model_pipeline 
+{
+  "request_processors": [
+    {
+      "neural_query_enricher" : {
+        "default_model_id": "QdCnT5ABMeXpQwrSsdou",
+        "neural_field_default_id": {
+           "my_field_1": "uZj0qYoBMtvQlfhaYeud",
+           "my_field_2": "upj0qYoBMtvQlfhaZOuM"
+        }
+      }
+    }
+  ]
+}
+
+PUT /my-nlp-index/_settings
+{
+  "index.search.default_pipeline" : "default_model_pipeline"
+}
+
+GET /testindex/_search?search_pipeline=nlp-search-pipeline
+{
+  "_source": {
+    "exclude": [
+      "passage_embedding"
+    ]
+  },
+  "query": {
+    "hybrid": {
+      "queries": [
+        {
+          "match": {
+            "passage_text": {
+              "query": "o que é uma membrana?"
+            }
+          }
+        },
+        {
+          "neural": {
+            "passage_chunk_embedding.knn": {
+              "query_text": "o que é uma membrana?",
+              "model_id": "QdCnT5ABMeXpQwrSsdou",
+              "k": 5
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+
+GET /testindex/_search
+{
+  "_source": {
+    "excludes": [
+      "passage_embedding"
+    ]
+  },
+  "query": {
+    "neural": {
+      "passage_embedding": {
+        "model_id": "QdCnT5ABMeXpQwrSsdou",
+        "query_text": "o que é uma membrana?",
+        "k": 100
+      }
+    }
+  }
+}
+
+
+PUT _ingest/pipeline/text-chunking-embedding-ingest-pipeline
+{
+  "description": "A text chunking and embedding ingest pipeline",
+  "processors": [
+    {
+      "text_chunking": {
+        "algorithm": {
+          "fixed_token_length": {
+            "token_limit": 200,
+            "overlap_rate": 0.2,
+            "tokenizer": "standard"
+          }
+        },
+        "field_map": {
+          "passage_text": "passage_chunk"
+        }
+      }
+    },
+    {
+      "text_embedding": {
+        "model_id": "QdCnT5ABMeXpQwrSsdou",
+        "field_map": {
+          "passage_chunk": "passage_chunk_embedding"
+        }
+      }
+    }
+  ]
+}
+
+POST _ingest/pipeline/text-chunking-embedding-ingest-pipeline/_simulate
+{
+  "docs": [
+    {
+      "_index": "testindex",
+      "_source":{
+         "passage_text": "você já deve ter percebido a enorme diversidade de seres vivos, né? Mas você sabe como surgiu tanta diferença assim, vamos lá falar sobre evolução. A evolução dos seres vivos foi explicada de formas diferentes ao longo da história, Porém, duas teorias se destacaram uma desenvolvida por Lamark e outra por Darwin. Ambos consideravam que as espécies não eram fixas, ou seja, que elas poderiam sofrer mudanças ao longo do tempo. Além disso, eles também consideravam que o ambiente tem um papel importantíssimo no processo de evolução. Tá, Eles pareciam concordar em algumas coisas sobre evolução, mas no que será que eles discordavam? Então, lamark defendia a lei do uso e desuso, e acreditava que o ambiente era quem provocava as alterações nos organismos. Um exemplo simples é pensar no pescoço das girafas. Imagine que, nos ancestrais, eles eram curtos. Como eles ficaram tão longos para lamark, O alongamento dos pescoços ocorreu porque o ambiente no qual viviam sofreu uma modificação que fez com que elas precisassem esticar o pescoço constantemente. Para conseguir a, por exemplo, essa necessidade de esticar o pescoço fez ao longo de gerações que o pescoço delas ficasse cada vez mais comprido, característica que acabou sendo passada de pais para filhos. Para Darwin, a evolução acontecia de outra forma. Ele defendia a seleção natural, processo pelo qual o ambiente seleciona os indivíduos mais adaptados. Aqueles que tem mais chances de sobreviver, reproduzir e deixar descendentes tá e a evolução das girafas nesse caso. Para Darwin, entre os ancestrais das girafas existiam indivíduos com pescoços um pouco mais longos e outros com pescoços mais curtos. Alguma alteração no ambiente fez com que ficasse mais fácil para a girafa de pescoço mais longo, sobreviver e deixar descendentes. Essa alteração criou uma situação na qual praticamente nenhum indivíduo de pescoço curto conseguiu sobreviver e todos acabaram desaparecendo. Então, como essas características surgem e são passadas adiante na época, Darwin não soube responder essa pergunta. Hoje nós sabemos a resposta, pois os estudos de Gregor Mendel, pai da genética, foram divulgados. Atualmente temos a teoria sintética da evolução, que une os conceitos descritos por Darwin aos conhecimentos desenvolvidos através do estudo do DNA. Foi assim que a gente descobriu que as mudanças entre as espécies surgem de mutações no DNA. Hoje dizemos que novas espécies surgem por meio de mutações e de processos de isolamento. As mutações precisam ser hereditárias e precisam passar pelo difícil processo da seleção natural se as mutações resultam em adaptações vantajosas que elas aumentem cada vez mais na população, fazendo a espécie evoluir, porém pode acontecer da população de uma determinada espécie ser separada em outras duas. Nesse caso, podemos ter o isolamento geográfico e o isolamento reprodutivo. No isolamento geográfico, as populações são separadas por uma barreira geográfica tipo o surgimento de um rio ou de uma montanha. Ao longo das gerações. Cada população vai sofrendo mutações diferentes e seletivas diferentes até que em certo momento as populações já acumulam tantas mudanças que não conseguem mais reproduzir, ou seja, estão em isolamento reprodutivo também. Nesse ponto não há mais dúvidas. Eles agora são espécies diferentes. Bom, Esse foi só um pequeno passeio por todo o processo de evolução. Continue aprofundando seus estudos, tá até a próxima"
+      }
+    }
+  ]
+}
+
+
+PUT testindex
+{
+  "settings": {
+    "index": {
+      "knn": true,
+      "default_pipeline": "text-chunking-embedding-ingest-pipeline"
+    }
+  },
+  "mappings": {
+    "properties": {
+      "passage_text": {
+        "type": "text"
+        
+      },
+      "passage_chunk_embedding": {
+        "type": "nested",
+        "properties": {
+          "knn": {
+            "type": "knn_vector",
+            "dimension": 1536
+          }
+        }
+      }
+    }
+  }
+}
+
+
+GET testindex/_search
+{
+  "query": {
+    "nested": {
+      "score_mode": "max",
+      "path": "passage_chunk_embedding",
+      "query": {
+        "neural": {
+          "passage_chunk_embedding.knn": {
+            "query_text": "document",
+            "model_id": "QdCnT5ABMeXpQwrSsdou"
+          }
+        }
+      }
+    }
+  }
+}
+
+
+
