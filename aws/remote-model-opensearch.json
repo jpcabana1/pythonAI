@@ -29,7 +29,7 @@ POST /_plugins/_ml/connectors/_create
     "api-version": "2023-05-15"
   },
   "credential": {
-    "openAI_key": "29392cd0e4a54a919f390cc3b1baed26"
+    "openAI_key": "${openAI_key}"
   },
   "actions": [
     {
