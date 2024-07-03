@@ -1,7 +1,5 @@
 sudo swapoff -a
 sudo vi /etc/sysctl.conf
-
-
 vm.max_map_count=262144
 
 export OPENSEARCH_INITIAL_ADMIN_PASSWORD=OpenSearchftd@2024
