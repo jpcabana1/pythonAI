@@ -12,5 +12,11 @@ How to upgrade pip:
 python.exe -m pip install --upgrade pip
 ```
 
+Venv
+
+``` pwsh
+python -m venv .
+```
+
 ## Documentation links
 * [asyncio — Asynchronous I/O](https://docs.python.org/3/library/asyncio.html)
