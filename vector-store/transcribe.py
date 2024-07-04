@@ -41,6 +41,7 @@ class TranscribeService:
         except Exception as e:
             print(f"Error when creating transcription Job")
             print(e)
+            return
         
         # Get TranscriptionJob
         response = self.get_transcription_job(job_name=job_name, client=self.__client)
