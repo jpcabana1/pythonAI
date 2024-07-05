@@ -28,7 +28,8 @@ class LoaderService:
         print(output_path)
         try:
             self.__helper.save_response_as_temp_file(file_path=output_path, response=response)
-        except:
+        except Exception as e:
+            print(e)
             self.__helper.delete_file_if_exists(output_path)
         
         #Identify file extension

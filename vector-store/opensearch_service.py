@@ -5,7 +5,7 @@ import base64
 from typing import List
 from langchain_community.vectorstores import OpenSearchVectorSearch, VectorStore
 from langchain_openai import AzureOpenAIEmbeddings
-from langchain_text_splitters import CharacterTextSplitter
+from langchain_text_splitters import CharacterTextSplitter, RecursiveCharacterTextSplitter
 from langchain_core.embeddings import Embeddings
 from langchain_core.documents import Document
 from loader_service import LoaderService
@@ -89,7 +89,10 @@ class OpenSearchService:
         if not self.__client.index_exists(index_name):
             self.__client.create_index(dimension=1536, index_name=index_name, body=self.get_index_body())
 
-    async def aingest_document(self, url:str):
+    async def aingest_document_url(self, url:str):
+        index_name = os.getenv("OPENSEARCH_INDEX_NAME")
+        self.create_index_if_not_exists(index_name=index_name)
+        
         documents :List[Document] = []
         loader_service = LoaderService()
         
@@ -101,14 +104,20 @@ class OpenSearchService:
             response = requests.get(url, timeout=240)
             documents = await loader_service.load(url=url, response=response)
             
-        text_splitter = CharacterTextSplitter(chunk_size=int(os.getenv("chunk_size")), chunk_overlap=int(os.getenv("chunk_overlap")))
+            #text_splitter = CharacterTextSplitter(chunk_size=int(os.getenv("chunk_size")), chunk_overlap=int(os.getenv("chunk_overlap")))
+            
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=int(os.getenv("chunk_size")), 
+                chunk_overlap=int(os.getenv("chunk_overlap")),
+                separators=["\n\n", "\n", "(?<=\. )", " ", ""]
+            )
+            
         splitted_docs :List[Document] = text_splitter.split_documents(documents)
+        print(f"splitted docs count: {len(splitted_docs)}")
+        
+     
+        
         self.__client.add_documents(documents=splitted_docs)
-
-    async def aingest_document_url(self, url:str):
-        index_name = os.getenv("OPENSEARCH_INDEX_NAME")
-        self.create_index_if_not_exists(index_name=index_name)
-        await self.aingest_document(url=url)
 
     def similarity_search(self, query:str):
         docs = self.__client.similarity_search(query, k=10)

@@ -19,6 +19,7 @@ class HelperTempFile:
             "text/plain":".txt",
             "video/mp4":".mp4",
             "text/html; charset=utf-8":".html",
+            "text/html":".html",
             "application/pdf":".pdf",
         }
         return extensions.get(content_type)
@@ -43,4 +44,4 @@ class HelperTempFile:
            
     
     def get_output_file_name(self, converted_filename:str, content_type:str) -> str:
-        return f"dumps/{converted_filename}{self.get_file_extension_from_content_type(content_type)}"
+        return f"{converted_filename}{self.get_file_extension_from_content_type(content_type)}"

@@ -17,6 +17,7 @@ async def main():
             except Exception as e:
                 print(f"failed to load url: {url}")
                 print(e)
+                query=""
         else:
             service.highlight_search(query=query)
             query = input("Enter a text query: ")

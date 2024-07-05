@@ -39,7 +39,6 @@ class TranscribeService:
                     'MediaFileUri': video_uri
                 }
             )
-            print(f"job_name: {job_name}")
         except Exception as e:
             print(f"Error when creating transcription Job")
             print(e)
