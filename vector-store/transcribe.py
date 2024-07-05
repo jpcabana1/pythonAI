@@ -29,8 +29,6 @@ class TranscribeService:
     async def transcribe_video(self, video_uri:str, language_code:str="pt-BR", media_format:str="mp4"):
         job_name=self.get_transcription_job_name(video_uri=video_uri)
         print(job_name)
-        print(language_code)
-        print(media_format)
         # Create TranscriptionJob
         try:         
             self.__client.start_transcription_job(
@@ -51,7 +49,7 @@ class TranscribeService:
         response = self.get_transcription_job(job_name=job_name, client=self.__client)
         
         # Await TranscriptionJob result
-        while response["TranscriptionJob"]["TranscriptionJobStatus"] != "COMPLETED":
+        while response["TranscriptionJob"]["TranscriptionJobStatus"] != "COMPLETED" and response["TranscriptionJob"]["TranscriptionJobStatus"] != "FAILED":
             response = self.get_transcription_job(job_name=job_name, client=self.__client)
             status = str(response["TranscriptionJob"]["TranscriptionJobStatus"])
             print(f"Current TranscriptionJobStatus: {status}")

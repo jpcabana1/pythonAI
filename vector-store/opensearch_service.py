@@ -14,7 +14,7 @@ class OpenSearchService:
     def __init__(self) -> None:
         self.__opensearch_url = os.getenv("OPENSEARCH_URL")
         self.__opensearch_index_name = os.getenv("OPENSEARCH_INDEX_NAME")
-        self.__client :VectorStore = self.load_opensearch_vectorstore(
+        self.__client :OpenSearchVectorSearch = self.load_opensearch_vectorstore(
             url=self.__opensearch_url, 
             embeddings=self.load_embeddings_model(),
             index_name=self.__opensearch_index_name)
@@ -107,8 +107,8 @@ class OpenSearchService:
 
     async def aingest_document_url(self, url:str):
         index_name = os.getenv("OPENSEARCH_INDEX_NAME")
-        self.create_index_if_not_exists(client=self.__client, index_name=index_name)
-        await self.aingest_document(client=self.__client, url=url)
+        self.create_index_if_not_exists(index_name=index_name)
+        await self.aingest_document(url=url)
 
     def similarity_search(self, query:str):
         docs = self.__client.similarity_search(query, k=10)
