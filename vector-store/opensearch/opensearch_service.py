@@ -8,7 +8,7 @@ from langchain_openai import AzureOpenAIEmbeddings
 from langchain_text_splitters import CharacterTextSplitter, RecursiveCharacterTextSplitter
 from langchain_core.embeddings import Embeddings
 from langchain_core.documents import Document
-from loader_service import LoaderService
+from opensearch.loader_service import LoaderService
 
 class OpenSearchService:
     def __init__(self) -> None:

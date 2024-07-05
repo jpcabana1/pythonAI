@@ -1,11 +1,11 @@
 
 import os
-from transcribe import TranscribeService
+from transcribe.transcribe import TranscribeService
 from langchain_text_splitters import CharacterTextSplitter
 from langchain_core.documents import Document
 from langchain_community.document_loaders import PyPDFLoader, UnstructuredHTMLLoader, TextLoader
 from typing import List
-from helper_file import HelperTempFile
+from utils.helper_file import HelperTempFile
 from requests import Response
 
 class LoaderService:

@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from asyncio import run
-from opensearch_service import OpenSearchService
+from opensearch.opensearch_service import OpenSearchService
 
 async def main():
     service = OpenSearchService()
