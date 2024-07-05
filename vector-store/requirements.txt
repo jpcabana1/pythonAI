@@ -5,3 +5,5 @@ langchain
 langchain-community
 langchain-openai
 pypdf
+psutil
+boto3

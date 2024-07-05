@@ -3,18 +3,20 @@ import json
 import requests
 import base64
 import re
+
 from langchain_community.vectorstores import OpenSearchVectorSearch, VectorStore
 from langchain_openai import AzureOpenAIEmbeddings
 from langchain_text_splitters import CharacterTextSplitter
-from langchain_community.document_loaders.base import BaseLoader
+
 from langchain_core.embeddings import Embeddings
 from langchain_core.documents import Document
 from typing import List
 from dotenv import load_dotenv
-from loader_strategy import LoaderStrategy
+from loader_service import LoaderService
+from asyncio import run
+
 
 load_dotenv()
-
 
 def basic_auth(username, password):
 
@@ -64,7 +66,7 @@ def load_vectorstore_opensearch_poc(docs: List[Document], embeddings: Embeddings
 
 def split_document(loader) -> List[Document]:
     documents :List[Document] = loader.load()
-    text_splitter = CharacterTextSplitter(chunk_size=100, chunk_overlap=10)
+    text_splitter = CharacterTextSplitter(chunk_size=int(os.getenv("chunk_size")), chunk_overlap=int(os.getenv("chunk_overlap")))
     return text_splitter.split_documents(documents)
 
 def get_index_body():
@@ -100,8 +102,8 @@ def get_index_body():
         }
 
 def create_index_if_not_exists(client:VectorStore, index_name:str):
-    if client.index_exists(index_name):
-        client.delete_index(index_name=index_name)
+    if not client.index_exists(index_name):
+        #client.delete_index(index_name=index_name)
         client.create_index(dimension=1536, index_name=index_name, body=get_index_body())
 
 def convert_text(result_text) -> str:
@@ -118,10 +120,21 @@ def remove_non_ascii(docs:List[Document]):
         if doc.page_content == '':
             docs.remove(doc)
 
-def ingest_document(client:VectorStore, file_path:str):
-    loader :BaseLoader = LoaderStrategy().get_loader(file_path=file_path)
-    docs :List[Document] = split_document(loader=loader)
-    client.add_documents(documents=docs)
+async def aingest_document(client:VectorStore, url:str):
+    documents :List[Document] = []
+    loader_service = LoaderService()
+    
+    if loader_service.is_video(url=url):
+        print("transcribing video...")
+        documents = await loader_service.load_transcription(s3_url=url)
+    else:
+        print("dowloading file...")
+        response = requests.get(url, timeout=240)
+        documents = await loader_service.load(url=url, response=response)
+        
+    text_splitter = CharacterTextSplitter(chunk_size=int(os.getenv("chunk_size")), chunk_overlap=int(os.getenv("chunk_overlap")))
+    splitted_docs :List[Document] = text_splitter.split_documents(documents)
+    client.add_documents(documents=splitted_docs)
 
 def search_documents(query:str, client:VectorStore):
     docs = client.similarity_search(query, k=10)
@@ -156,28 +169,42 @@ def highlight_search(query:str):
     'Authorization': basic_auth(os.getenv("OPENSEARCH_USERNAME"), os.getenv("OPENSEARCH_PASSWORD"))
     }
 
-    return requests.request("GET", url, headers=headers, data=payload, verify=False)
+    response = requests.request("GET", url, headers=headers, data=payload, verify=False)
+    try:
+        print(json.dumps(response.json()["hits"]["hits"][0], indent=2))
+    except Exception:
+        print(json.dumps(response.json()["hits"], indent=2))
 
-def main():
-    
-    #file_path="data/state_of_the_union.txt"
-    #file_path="data/9140604000554-ftd-se-em-cnt-biologia-vol13-18-miolo-prof-001-33.pdf"
-    file_path="data/S18-3-MAT60-3-OAU-001.pdf"
-    
-    #query = "What did the president say about Ketanji Brown Jackson"
-    #query = "O que foi observado após a descoberta do microscópio óptico?"
-    query = "Onde está exposto o painel Guernica?"
-    
+async def aingest_document_url(url:str):
     index_name = os.getenv("OPENSEARCH_INDEX_NAME")
     client = load_opensearch_vectorstore(url=os.getenv("OPENSEARCH_URL"), embeddings=load_embeddings_model(), index_name=index_name)
     create_index_if_not_exists(client=client, index_name=index_name)
-    ingest_document(client=client, file_path=file_path)
+    await aingest_document(client=client, url=url)
+
+async def main():
+    urls = [
+    ]
+      
+    #await aingest_document_url(url=urls[2])
+      
+    #Indexing
+    # for url in urls:
+    #     try:
+    #         await aingest_document_url(url=url)
+    #     except Exception as e:
+    #         print(f"failed to load url: {url}")
+    #         print(e)
     
+    #similarity_search
     # print(search_documents(query=query, client=client))
     
-    response = highlight_search(query=query)
-    print(json.dumps(response.json()["hits"]["hits"][0], indent=2))
+    #highlight search
+    query = input("Enter a text query: ")
+    while query != "exit":
+        highlight_search(query=query)
+        query = input("Enter a text query: ")
+    
 
 if __name__ == "__main__":
-    main()
+    run(main())
 
