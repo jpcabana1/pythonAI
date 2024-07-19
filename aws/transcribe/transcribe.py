@@ -35,6 +35,10 @@ class TranscribeService:
 
     def get_transcription_job(self, job_name, client):
         result = None
+        # TODO: ajustar retries 
+        # ThrottlingException
+        # Referência https://repost.aws/knowledge-center/ssm-parameter-store-rate-exceeded
+        # Adicionar delays para reduzir 
         try:
             result = client.get_transcription_job(TranscriptionJobName=job_name)
         except:
@@ -147,11 +151,6 @@ Job MediaFormat: {response["TranscriptionJob"]["MediaFormat"]}
       
 async def main():
     
-
-    #video_uri="s3://ionica-sso-stress-content/01a6fb00-28ca-11ef-a87b-913cb7053954/3f80ee70-2367-11eb-a3ad-9f132a537bed_S20-2-PLA61-9-01-OAU-003.mp4"
-    #video_uri="https://ftdi2cv2-prod-content.s3-sa-east-1.amazonaws.com/000cb430-56ea-11ea-9845-5919a5c1a6d2/S20-1-ESP80-5-audio-006.mp3"
-    #video_uri="https://ftdi2cv2-prod-content.s3-sa-east-1.amazonaws.com/00491d40-3ad8-11ea-ac4d-1961fa465f4c/S20-SE-EI-4anos-audio012.mp3"
-    #region_name="sa-east-1" #sa-east-1, us-east-2
     urls = [
     "s3://ionica-sso-stress-content/01a6fb00-28ca-11ef-a87b-913cb7053954/3f80ee70-2367-11eb-a3ad-9f132a537bed_S20-2-PLA61-9-01-OAU-003.mp4",
 	"https://ftdi2cv2-prod-content.s3-sa-east-1.amazonaws.com/000cb430-56ea-11ea-9845-5919a5c1a6d2/S20-1-ESP80-5-audio-006.mp3",
@@ -165,7 +164,6 @@ async def main():
     
     try:
         service = TranscribeService("sa-east-1")
-        #transcription = await service.start_transcription_job(video_uri=video_uri)
         jobs = []
         [jobs.append(service.start_job(url)) for url in urls]
         
@@ -176,12 +174,10 @@ async def main():
                 result = future.result()
                 print(f"{result}\n")
                 
-        #print(transcription)
     except Exception as e:
         print(e)
     
-
-
+    
 if __name__ == "__main__":
     load_dotenv()
     run(main())
